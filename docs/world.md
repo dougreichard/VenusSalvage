@@ -36,7 +36,7 @@ Get out before that happens:
 
 | Cloud | What it does |
 |---|---|
-| White and grey cumulus, stratus | Cover. Inside one, enemy missiles and turrets cannot see you. |
+| Warm haze drifting in the lanes | Cover. Inside one, enemy missiles and turrets cannot see you. |
 | Ice (pale blue) | Harvest for **coolant** |
 | Sulfur (yellow) | Harvest for **fuel** |
 | Ore dust (brown) | Harvest for **materials** |
@@ -45,9 +45,13 @@ Get out before that happens:
 | Wreck haze (grey, with debris) | Harvest for **salvage**, which also patches your rings |
 | Storm cell (dark, flickering lightning) | Cover, but it strikes your ship every few seconds and damages your systems |
 
-A resource cloud shrinks as it is harvested and disperses when it is empty. Below the
-lanes lies a layer of cloud, and below that the cloud sea itself. Both hide you as a cloud
-does. The deeper you go the thicker they get, and the closer you are to the deck.
+Resource clouds glow in their own colors around what you harvest: crystals, sulfur,
+ore, spores, aether veins, wreck debris. They shrink as they are harvested and
+disperse when empty.
+
+The lanes ride on **the murk**, the dim olive cloud sea of Venus, which begins just
+below your keel. Dip into it and you are hidden, as in any cloud. The deeper you go,
+the thicker and darker it gets, and the closer you are to the deck.
 
 ## Wind lanes
 
