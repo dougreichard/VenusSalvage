@@ -59,6 +59,7 @@ Crew:
     # the roster can re-hull a crew after the map body ran; keep them in their faction's ship
     vs_seat(VS_FACTION)
     vs_test_cargo(vs_test_units)
+    vs_test_start_y()
     for vs_p in to_object_list(role("__player__")):
         # crews SELL by comms (so the hold can be traded for refits instead); the
         # balance autopilot sells as soon as it is in range

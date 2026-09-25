@@ -84,6 +84,25 @@ def vs_place_players(home_id):
     return True
 
 
+def vs_test_start_y():
+    """TEST HOOK (setting VS_START_Y): drop each crew to that altitude, once - from the
+    loop, since the crew is re-placed after the map body runs (a body-time move ended up
+    at -570, not -4800). For judging the low cloud from inside it."""
+    from sbs_utils.procedural.roles import role
+    from sbs_utils.procedural.query import to_object_list
+    from sbs_utils.procedural.inventory import get_inventory_value, set_inventory_value
+    y = vs_setting("VS_START_Y", None)
+    if y is None:
+        return 0
+    n = 0
+    for p in to_object_list(role("__player__")):
+        if p is not None and not get_inventory_value(p.id, "vs_start_y_done", False):
+            set_inventory_value(p.id, "vs_start_y_done", True)
+            p.pos = _vs_vec(p.pos.x, float(y), p.pos.z)
+            n += 1
+    return n
+
+
 def _vs_vec(x, y, z):
     from sbs_utils.vec import Vec3
     return Vec3(x, y, z)
