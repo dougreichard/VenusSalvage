@@ -3,7 +3,7 @@
 *Harvest the resource clouds, strip the wrecks, and haul it all home before time runs out.
 Raiders hunt the lanes, storms tear at your rings, and a ship that loses its lift sinks.*
 
-![Hauling cargo home over the cloud sea](../img/chase_amber.jpg)
+![Riding the murk home with a full hold](../img/chase_amber.jpg)
 
 ## The job
 

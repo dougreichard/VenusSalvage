@@ -32,7 +32,7 @@ Get out before that happens:
 
 ## Clouds
 
-![Clouds of every kind around a Flotilla cruiser](img/chase_storm.jpg)
+![A storm cell rising over the murk](img/chase_storm.jpg)
 
 | Cloud | What it does |
 |---|---|

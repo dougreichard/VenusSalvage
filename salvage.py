@@ -104,7 +104,15 @@ def vs_test_storm():
     except Exception:
         fx, fz = 0.0, 1.0
     L = math.hypot(fx, fz) or 1.0
-    _vs("venus_cloud_spawn")("venus_cloud_storm_cell", p.pos.x + fx / L * 2500, p.pos.y, p.pos.z + fz / L * 2500)
+    # the setting's value is the distance when it is more than a flag (7000 frames the
+    # whole cell and its bolts for a screenshot; 2500 puts the crew at its edge)
+    try:
+        dist = float(vs_setting("VS_TEST_STORM", 1))
+    except (TypeError, ValueError):
+        dist = 1.0
+    dist = dist if dist > 1 else 2500.0
+    _vs("venus_cloud_spawn")("venus_cloud_storm_cell", p.pos.x + fx / L * dist, p.pos.y + 600,
+                             p.pos.z + fz / L * dist)
     return 1
 
 

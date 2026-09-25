@@ -1,6 +1,6 @@
 # Above the Venusian Clouds
 
-![A Salvage Flotilla cruiser over the cloud sea](img/chase_amber.jpg)
+![A Salvage Flotilla cruiser riding on the murk](img/chase_amber.jpg)
 
 There is no ground on Venus. There is only the cloud sea: a hot, crushing deck below and
 thin, bright haze above. Everyone who lives here lives on airships, and every airship was
