@@ -1,0 +1,34 @@
+site_name: Above the Venusian Clouds
+site_description: Player guide to the Venus missions for Artemis Cosmos - salvage, battle, convoy and siege over the cloud sea of Venus.
+docs_dir: docs
+site_dir: site
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - The missions:
+      - Salvage Above Venus: maps/salvage.md
+      - Fleet Battle Above Venus: maps/battle.md
+      - Convoy to the Yards: maps/convoy.md
+      - Siege of the Haven: maps/siege.md
+  - The sky world: world.md
+  - The six factions: factions.md
+  - Your airship: airship.md
+  - Markets and trade: trade.md
+  - Crew stations: crew.md
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep orange
+      accent: amber
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.tabs.link
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
