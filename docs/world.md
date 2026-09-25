@@ -47,7 +47,7 @@ Get out before that happens:
 
 A resource cloud shrinks as it is harvested and disperses when it is empty. Below the
 lanes lies a layer of cloud, and below that the cloud sea itself. Both hide you as a cloud
-does, but they sit low, near the deck, where lingering costs you.
+does. The deeper you go the thicker they get, and the closer you are to the deck.
 
 ## Wind lanes
 
