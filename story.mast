@@ -7,6 +7,7 @@ import salvage.py
 default shared VS_FACTION = "Flotilla"
 default shared VS_CREDITS = 0
 default shared VS_TARGET = 1000
+default shared VS_ENEMY = "Brood"
 
 
 @map/venus_salvage "Salvage Above Venus"
@@ -28,7 +29,7 @@ Crew:
     " time runs out. Raiders hunt the lanes, storms tear at your rings, and a ship that
     " loses its lift sinks into the deck.
     # the dropdown picks the faction; a profile may force one (VS_FACTION_FORCE)
-    VS_FACTION = vs_race(vs_setting("VS_FACTION_FORCE", None) or VS_FACTION)
+    shared VS_FACTION = vs_race(vs_setting("VS_FACTION_FORCE", None) or VS_FACTION)
     shared vs_home = vs_home_spawn(VS_FACTION)
     await task_schedule(spawn_players)
     vs_seat(VS_FACTION)
@@ -38,9 +39,10 @@ Crew:
 
     vs_world = venus_world_spawn(0, 0, 32000, lanes=20, resources=16, storms=3, wrecks=5)
     print("Salvage Above Venus: " + vs_world)
+    vs_lanes = vs_wind_lanes()
 
     shared VS_CREDITS = 0
-    shared VS_TARGET = 600 + 150 * vs_int(DIFFICULTY, 4)
+    shared VS_TARGET = vs_target(vs_int(DIFFICULTY, 4))
     vs_minutes = vs_int(GAME_TIME_LIMIT, 25)
     set_timer(SHARED, "vs_time", minutes=vs_minutes)
     game_end_condition_add(destroyed_all(role("__player__")), "Every ship was lost to the deck.", False)
@@ -49,16 +51,27 @@ Crew:
     comms_broadcast(role("__player__"), "Haul " + str(VS_TARGET) + " credits of salvage home in " + str(vs_minutes) + " minutes. Ice, sulfur, ore, spores and aether sell at any market station; wrecks give salvage and a lift-ring refit.", "#fc8")
     task_schedule(vs_raids)
     vs_test_units = vs_int(vs_setting("VS_TEST_CARGO", 0), 0)
-    vs_test_cargo(vs_test_units) if vs_test_units > 0 else None
+    shared vs_autopilot = vs_int(vs_setting("VS_AUTOPILOT", 0), 0) > 0
+    vs_autopilot_reset() if vs_autopilot else None
 
 --- vs_loop
     await delay_sim(3)
+    # the roster can re-hull a crew after the map body ran; keep them in their faction's ship
+    vs_seat(VS_FACTION)
+    vs_test_cargo(vs_test_units)
     for vs_p in to_object_list(role("__player__")):
-        vs_sold = vs_sell(vs_p)
-        if vs_sold > 0:
-            comms_broadcast(vs_p.id, "Sold for " + str(vs_sold) + " credits. Lift rings refitted. " + str(VS_CREDITS) + " of " + str(VS_TARGET) + ".", "#8f8")
+        # crews SELL by comms (so the hold can be traded for refits instead); the
+        # balance autopilot sells as soon as it is in range
+        vs_dock_refit(vs_p)
+        if vs_autopilot:
+            vs_autopilot_step(vs_p)
+        if vs_autopilot or vs_test_units > 0:
+            vs_sold = vs_sell(vs_p)
+            if vs_sold > 0:
+                vs_balance_note("SOLD " + str(vs_sold) + " -> " + str(VS_CREDITS) + "/" + str(VS_TARGET))
     vs_report()
     if VS_CREDITS >= VS_TARGET:
+        vs_balance_note("WIN " + str(VS_CREDITS))
         START_TEXT = "The holds are full and the Haven is saved. " + str(VS_CREDITS) + " credits hauled."
         GAME_STARTED = False
         GAME_ENDED = True
@@ -66,6 +79,7 @@ Crew:
         signal_emit("show_game_results", None)
         ->END
     if is_timer_finished(SHARED, "vs_time"):
+        vs_balance_note("TIMEOUT " + str(VS_CREDITS))
         START_TEXT = "Time is up. Only " + str(VS_CREDITS) + " of " + str(VS_TARGET) + " credits hauled."
         GAME_STARTED = False
         GAME_ENDED = True
@@ -85,8 +99,48 @@ Crew:
     ->END if len(vs_enemies) == 0
     vs_wave += 1
     vs_race_pick = random.choice(vs_enemies)
-    vs_pos = Vec3.rand_in_sphere(9000, 14000, False, True)
-    vs_size = min(10, vs_int(DIFFICULTY, 4) // 2 + vs_wave)
+    vs_pos = vs_raid_point()
+    vs_size = vs_raid_size(vs_int(DIFFICULTY, 4), vs_wave)
     prefab_spawn("prefab_fleet_raider", {"race": vs_race_pick, "fleet_difficulty": vs_size, "faction_side": True, "START_X": vs_pos.x, "START_Y": 0, "START_Z": vs_pos.z})
+    vs_balance_note("WAVE " + str(vs_wave) + " " + vs_race_pick + " size " + str(vs_size))
     comms_broadcast(role("__player__"), "Raiders on the lanes: " + vs_race_pick + " wave " + str(vs_wave) + ".", "#f84")
     jump vs_raid_loop
+
+
+# ---- Market yards trade cargo for refits --------------------------------
+# Routes go at the END of the file: labels fall through, so a route between two labels
+# would change what one of them runs into.
+//comms if has_role(COMMS_SELECTED_ID, "vs_market") and has_role(COMMS_ORIGIN_ID, "__player__")
+    vs_offer = vs_sell_offer(COMMS_ORIGIN_ID)
+    + "Sell the hold ({vs_offer} credits)" if vs_offer > 0:
+        vs_sold = vs_sell(to_object(COMMS_ORIGIN_ID))
+        if vs_sold > 0:
+            comms_broadcast(COMMS_ORIGIN_ID, "Sold for " + str(vs_sold) + " credits. Lift rings refitted. " + str(VS_CREDITS) + " of " + str(VS_TARGET) + ".", "#8f8")
+        else:
+            comms_broadcast(COMMS_ORIGIN_ID, "Come within " + str(int(vs_sell_range())) + " of the yard to sell.", "#fd6")
+        comms_navigate("//comms")
+    + "Trade cargo for refits" //comms/vs_trade
+
+//comms/vs_trade
+    vs_t_missiles = vs_trade_label("missiles")
+    vs_t_rings = vs_trade_label("rings")
+    vs_t_hold = vs_trade_label("hold")
+    vs_t_armor = vs_trade_label("armor")
+    + "Back" //comms
+    + "{vs_t_missiles}" if vs_trade_can(COMMS_ORIGIN_ID, "missiles"):
+        comms_broadcast(COMMS_ORIGIN_ID, vs_trade(COMMS_ORIGIN_ID, "missiles"), "#8f8")
+        comms_navigate("//comms/vs_trade")
+    + "{vs_t_rings}" if vs_trade_can(COMMS_ORIGIN_ID, "rings"):
+        comms_broadcast(COMMS_ORIGIN_ID, vs_trade(COMMS_ORIGIN_ID, "rings"), "#8f8")
+        comms_navigate("//comms/vs_trade")
+    + "{vs_t_hold}" if vs_trade_can(COMMS_ORIGIN_ID, "hold"):
+        comms_broadcast(COMMS_ORIGIN_ID, vs_trade(COMMS_ORIGIN_ID, "hold"), "#8f8")
+        comms_navigate("//comms/vs_trade")
+    + "{vs_t_armor}" if vs_trade_can(COMMS_ORIGIN_ID, "armor"):
+        comms_broadcast(COMMS_ORIGIN_ID, vs_trade(COMMS_ORIGIN_ID, "armor"), "#8f8")
+        comms_navigate("//comms/vs_trade")
+
+
+# IMPORTS LAST: `import` inlines the file where it appears.
+import maps/venus_ops.py
+import maps/venus_ops.mast

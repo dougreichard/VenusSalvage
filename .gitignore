@@ -2,3 +2,4 @@ __pycache__/
 *.log
 records/
 vs_status.txt
+vs_balance.log

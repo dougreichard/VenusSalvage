@@ -1,0 +1,178 @@
+# Three operations over the cloud sea, on the same world and helpers as the salvage map:
+# a fleet battle, a convoy escort, and a siege.
+
+@map/venus_battle "Fleet Battle Above Venus"
+metadata: ``` yaml
+Properties:
+  Main:
+    Player Ships: 'gui_int_slider("$text:int;low: 1.0;high:4.0;", var= "PLAYER_COUNT")'
+    Difficulty: 'gui_int_slider("$text:int;low: 1.0;high:11.0;", var= "DIFFICULTY")'
+    Faction: 'gui_drop_down("$text: {VS_FACTION};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_FACTION")'
+    Enemy: 'gui_drop_down("$text: {VS_ENEMY};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_ENEMY")'
+Defaults:
+  VS_FACTION: Syndicate
+  VS_ENEMY: Brood
+Crew:
+  hull: venus_diesel_cruiser
+  side: syndicate
+```
+    " Two navies, one sky. Break the enemy's command spire before they break yours; your
+    " own fleet flies with you, and theirs keeps coming.
+    shared VS_FACTION = vs_race(vs_setting("VS_FACTION_FORCE", None) or VS_FACTION)
+    shared VS_ENEMY = vs_ops_enemy(VS_FACTION, vs_setting("VS_ENEMY_FORCE", None) or VS_ENEMY)
+    shared vs_home = vs_ops_station(VS_FACTION, "command", 0, 0, 0, "vs_market")
+    vs_ops_station(VS_FACTION, "industrial", 4000, 300, -2500, "vs_market")
+    shared vs_foe = vs_ops_station(VS_ENEMY, "command", 0, 0, 26000)
+    vs_ops_station(VS_ENEMY, "industrial", -4500, 300, 28500)
+    await task_schedule(spawn_players)
+    vs_seat(VS_FACTION)
+    vs_place_players(vs_home)
+    for vs_p in to_object_list(role("__player__")):
+        docking_set_docking_logic(vs_p.id, role(vs_p.side) & role("station"), docking_dock_with_friendly_station)
+    venus_world_spawn(0, 13000, 22000, lanes=14, resources=4, storms=2, wrecks=3)
+    venus_wind_lane(0, 2500, 0, 23000, 0.0, 1400.0)
+    venus_wind_lane(3000, 23000, 3000, 2500, 0.0, 1400.0)
+    vs_d = vs_int(DIFFICULTY, 4)
+    prefab_spawn("prefab_fleet_raider", vs_ops_fleet_data(VS_FACTION, 2 + vs_d // 3, Vec3(-2500, 0, 3500)))
+    prefab_spawn("prefab_fleet_raider", vs_ops_fleet_data(VS_ENEMY, 2 + vs_d // 2, Vec3(0, 0, 21000)))
+    game_end_condition_add(destroyed_any(vs_foe), "The enemy spire is down. The sky is yours.", True)
+    game_end_condition_add(destroyed_any(vs_home), "Your command spire has fallen.", False)
+    game_end_condition_add(destroyed_all(role("__player__")), "Every ship was lost to the deck.", False)
+    comms_broadcast(role("__player__"), "The " + VS_ENEMY + " spire is 26 km out along the lanes. Your fleet is with you. Break it.", "#fc8")
+    task_schedule(vs_battle_waves)
+    ->END
+
+== vs_battle_waves ==
+    vs_bw = 0
+---vs_bw_loop
+    await delay_sim(max(100, 220 - 12 * vs_int(DIFFICULTY, 4)))
+    ->END if GAME_ENDED
+    ->END if not object_exists(vs_foe)
+    vs_bw += 1
+    prefab_spawn("prefab_fleet_raider", vs_ops_fleet_data(VS_ENEMY, vs_int(DIFFICULTY, 4) // 2 + vs_bw, vs_ops_near(vs_foe, 1500, 3000)))
+    comms_broadcast(role("__player__"), "The " + VS_ENEMY + " launch another squadron.", "#f84")
+    # the spire's own side reinforces too, more slowly
+    if vs_bw % 2 == 0:
+        prefab_spawn("prefab_fleet_raider", vs_ops_fleet_data(VS_FACTION, 1 + vs_bw // 2, vs_ops_near(vs_home, 1500, 3000)))
+    jump vs_bw_loop
+
+
+@map/venus_convoy "Convoy to the Yards"
+metadata: ``` yaml
+Properties:
+  Main:
+    Player Ships: 'gui_int_slider("$text:int;low: 1.0;high:4.0;", var= "PLAYER_COUNT")'
+    Difficulty: 'gui_int_slider("$text:int;low: 1.0;high:11.0;", var= "DIFFICULTY")'
+    Faction: 'gui_drop_down("$text: {VS_FACTION};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_FACTION")'
+Defaults:
+  VS_FACTION: Concord
+Crew:
+  hull: venus_deco_cruiser
+  side: concord
+```
+    " Three barges and a tender, 30 km of open sky to the Yards, and raiders who know the
+    " route. Bring at least two barges' worth home.
+    shared VS_FACTION = vs_race(vs_setting("VS_FACTION_FORCE", None) or VS_FACTION)
+    shared vs_home = vs_ops_station(VS_FACTION, "civil", 0, 0, 0, "vs_market")
+    shared vs_yard = vs_ops_station(VS_FACTION, "industrial", 0, 0, 30000, "vs_market")
+    await task_schedule(spawn_players)
+    vs_seat(VS_FACTION)
+    vs_place_players(vs_home)
+    for vs_p in to_object_list(role("__player__")):
+        docking_set_docking_logic(vs_p.id, role(vs_p.side) & role("station"), docking_dock_with_friendly_station)
+    venus_world_spawn(0, 15000, 20000, lanes=16, resources=4, storms=3, wrecks=2)
+    venus_wind_lane(0, 1500, 0, 29000, 0.0, 1600.0)
+    shared vs_convoy = vs_convoy_spawn(VS_FACTION, 0, 1800)
+    shared VS_CONVOY_NEEDED = 2
+    game_end_condition_add(destroyed_all(role("__player__")), "Every escort was lost to the deck.", False)
+    comms_broadcast(role("__player__"), "Convoy is under way for the Yards, 30 km out on the wind lane. Two ships must arrive.", "#fc8")
+    task_schedule(vs_convoy_raids)
+--- vs_convoy_loop
+    await delay_sim(3)
+    vs_cv = vs_convoy_steer(vs_convoy, vs_yard)
+    vs_arrived = vs_first(vs_cv, 0)
+    vs_moving = vs_first(vs_cv, 1)
+    if vs_arrived >= VS_CONVOY_NEEDED:
+        START_TEXT = str(vs_arrived) + " convoy ships reached the Yards. The colony eats this month."
+        GAME_STARTED = False
+        GAME_ENDED = True
+        music_play_sting("victory")
+        signal_emit("show_game_results", None)
+        ->END
+    if vs_arrived + vs_moving < VS_CONVOY_NEEDED:
+        START_TEXT = "The convoy is lost. Only " + str(vs_arrived) + " ships reached the Yards."
+        GAME_STARTED = False
+        GAME_ENDED = True
+        music_play_sting("failure")
+        signal_emit("show_game_results", None)
+        ->END
+    jump vs_convoy_loop
+
+== vs_convoy_raids ==
+    vs_cr = 0
+---vs_cr_loop
+    await delay_sim(max(60, 150 - 10 * vs_int(DIFFICULTY, 4)))
+    ->END if GAME_ENDED
+    vs_lead = vs_convoy_lead(vs_convoy)
+    ->END if vs_lead is None
+    vs_cr += 1
+    vs_cr_race = random.choice(vs_enemy_races(VS_FACTION))
+    prefab_spawn("prefab_fleet_raider", vs_ops_fleet_data(vs_cr_race, vs_int(DIFFICULTY, 4) // 3 + vs_cr, vs_ops_near(vs_lead, 5000, 6500), vs_ops_brain("vs_convoy")))
+    comms_broadcast(role("__player__"), vs_cr_race + " raiders closing on the convoy.", "#f84")
+    jump vs_cr_loop
+
+
+@map/venus_siege "Siege of the Haven"
+metadata: ``` yaml
+Properties:
+  Main:
+    Player Ships: 'gui_int_slider("$text:int;low: 1.0;high:4.0;", var= "PLAYER_COUNT")'
+    Difficulty: 'gui_int_slider("$text:int;low: 1.0;high:11.0;", var= "DIFFICULTY")'
+    Faction: 'gui_drop_down("$text: {VS_FACTION};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_FACTION")'
+    Game Length: 'gui_input("desc: Minutes;", var="GAME_TIME_LIMIT")'
+Defaults:
+  VS_FACTION: Directorate
+  GAME_TIME_LIMIT: 15
+Crew:
+  hull: venus_atom_cruiser
+  side: directorate
+```
+    " Every hostile navy in the sky has come for the Haven. Hold the command spire until
+    " the storm season breaks.
+    shared VS_FACTION = vs_race(vs_setting("VS_FACTION_FORCE", None) or VS_FACTION)
+    shared vs_home = vs_ops_station(VS_FACTION, "command", 0, 0, 0, "vs_market")
+    vs_ops_station(VS_FACTION, "industrial", 3500, 300, 2200, "vs_market")
+    vs_ops_station(VS_FACTION, "civil", -3500, -200, 1800, "vs_market")
+    await task_schedule(spawn_players)
+    vs_seat(VS_FACTION)
+    vs_place_players(vs_home)
+    for vs_p in to_object_list(role("__player__")):
+        docking_set_docking_logic(vs_p.id, role(vs_p.side) & role("station"), docking_dock_with_friendly_station)
+    venus_world_spawn(0, 0, 18000, lanes=12, resources=6, storms=2, wrecks=4)
+    vs_siege_min = vs_int(GAME_TIME_LIMIT, 15)
+    set_timer(SHARED, "vs_siege", minutes=vs_siege_min)
+    game_end_condition_add(destroyed_any(vs_home), "The command spire has fallen.", False)
+    game_end_condition_add(destroyed_all(role("__player__")), "Every defender was lost to the deck.", False)
+    comms_broadcast(role("__player__"), "Hold the spire for " + str(vs_siege_min) + " minutes. They will come from every side.", "#fc8")
+    task_schedule(vs_siege_waves)
+--- vs_siege_loop
+    await delay_sim(3)
+    if is_timer_finished(SHARED, "vs_siege"):
+        START_TEXT = "The storm season breaks and the besiegers scatter. The Haven stands."
+        GAME_STARTED = False
+        GAME_ENDED = True
+        music_play_sting("victory")
+        signal_emit("show_game_results", None)
+        ->END
+    jump vs_siege_loop
+
+== vs_siege_waves ==
+    vs_sw = 0
+---vs_sw_loop
+    await delay_sim(max(70, 170 - 10 * vs_int(DIFFICULTY, 4)))
+    ->END if GAME_ENDED
+    vs_sw += 1
+    vs_sw_race = random.choice(vs_enemy_races(VS_FACTION))
+    prefab_spawn("prefab_fleet_raider", vs_ops_fleet_data(vs_sw_race, vs_int(DIFFICULTY, 4) // 3 + vs_sw, vs_ops_near(vs_home, 11000, 14000), vs_ops_brain("station")))
+    comms_broadcast(role("__player__"), vs_sw_race + " wave " + str(vs_sw) + " inbound.", "#f84")
+    jump vs_sw_loop
