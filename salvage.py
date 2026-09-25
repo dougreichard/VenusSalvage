@@ -108,6 +108,81 @@ def vs_test_storm():
     return 1
 
 
+def vs_test_typhon():
+    """TEST HOOK (setting VS_TEST_TYPHON): a RANGE test. Three held-still Typhons side by
+    side 2500 off the first crew's bow, named by their gap, each firing straight down at a
+    stock NPC 1200 / 2000 / 3000 below it, with beamRange 4000. Which ones fire is the
+    longest a storm's lightning bolt can be. vs_typhon_report() logs the first pair."""
+    import math
+    from sbs_utils.procedural.roles import role
+    from sbs_utils.procedural.query import to_object_list, to_id
+    from sbs_utils.procedural.spawn import npc_spawn
+    from sbs_utils.procedural.space_objects import target
+    from sbs_utils.agent import Agent
+    if not vs_setting("VS_TEST_TYPHON", None) or Agent.SHARED.get_inventory_value("vs_typhon", None):
+        return 0
+    ps = [p for p in to_object_list(role("__player__")) if p is not None]
+    if not ps:
+        return 0
+    p = ps[0]
+    try:
+        f = p.engine_object.forward_vector()
+        fx, fz = f.x, f.z
+    except Exception:
+        fx, fz = 0.0, 1.0
+    L = math.hypot(fx, fz) or 1.0
+    fx, fz = fx / L, fz / L
+    sx, sz = -fz, fx                                  # sideways
+    first = None
+    for i, gap in enumerate((1200, 2000, 3000)):
+        off = (i - 1) * 1500
+        x = p.pos.x + fx * 2500 + sx * off
+        z = p.pos.z + fz * 2500 + sz * off
+        ty = npc_spawn(x, p.pos.y + 800, z, "Typhon " + str(gap), "monster,typhon,classic", "-", "behav_typhon")
+        ds = ty.blob
+        for k in ("body_1_color", "body_2_color", "particle_color_1", "particle_color_2", "particle_color_3"):
+            ds.set(k, "purple", 0)
+        ds.set("beamColor", "yellow", 0)
+        npc = npc_spawn(x, p.pos.y + 800 - gap, z, "Target " + str(gap), "venus",
+                        "tsn_light_cruiser", "behav_npcship")
+        target(to_id(ty), to_id(npc), True, 1.0)
+        ds.set("monster_speed", 0.0, 0)
+        n = int(ds.get("beamCount", 0) or 0)
+        for b in range(max(n, 1)):
+            ds.set("beamRange", 4000.0, b)
+        if first is None:
+            first = (to_id(ty), to_id(npc))
+    Agent.SHARED.set_inventory_value("vs_typhon", first)
+    return 1
+
+
+def vs_typhon_report():
+    """'typhon target=<id> | frigate shields a/b' for vs_status.txt, or ''."""
+    from sbs_utils.agent import Agent
+    from sbs_utils.procedural.query import to_object, get_data_set_value
+    pair = Agent.SHARED.get_inventory_value("vs_typhon", None)
+    if not pair:
+        return ""
+    t, n = pair
+    to = to_object(t)
+    tid = get_data_set_value(t, "target_id", default=None) if to is not None else "gone"
+    if to_object(n) is None:
+        return " typhon target=%s | target DESTROYED" % tid
+    s0 = get_data_set_value(n, "shield_val", 0, default=None)
+    s1 = get_data_set_value(n, "shield_val", 1, default=None)
+    # keep it alive so the beam can be watched: refill after reading
+    try:
+        nds = to_object(n).data_set
+        for i in range(2):
+            top = nds.get("shield_max_val", i)
+            if top is not None:
+                nds.set("shield_val", top, i)
+    except Exception:
+        pass
+    from sbs_utils.procedural.helm import helm_distance
+    return " typhon target=%s dist=%d | target shields %s/%s" % (tid, helm_distance(t, n), s0, s1)
+
+
 def vs_test_start_y():
     """TEST HOOK (setting VS_START_Y): drop each crew to that altitude, once - from the
     loop, since the crew is re-placed after the map body runs (a body-time move ended up
@@ -482,6 +557,7 @@ def vs_report():
     sts = [st for st in to_object_list(role("station")) if st is not None]
     line += " stations " + str([(st.name, st.side, "HOSTILE" if ps and side_are_enemies(st.side, ps[0].side) else "ok",
                                  _vs_turret_sides(st)) for st in sts])
+    line += vs_typhon_report()
     try:
         with open(get_mission_dir_filename("vs_status.txt"), "w") as fh:
             fh.write(line + "\n")
