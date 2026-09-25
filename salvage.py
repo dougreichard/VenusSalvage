@@ -84,6 +84,30 @@ def vs_place_players(home_id):
     return True
 
 
+def vs_test_storm():
+    """TEST HOOK (setting VS_TEST_STORM): once, spawn a storm cell 2500 off the first crew's
+    bow at its altitude, so the lightning can be judged without hunting for a storm."""
+    import math
+    from sbs_utils.procedural.roles import role
+    from sbs_utils.procedural.query import to_object_list
+    from sbs_utils.agent import Agent
+    if not vs_setting("VS_TEST_STORM", None) or Agent.SHARED.get_inventory_value("vs_test_storm_done", False):
+        return 0
+    ps = [p for p in to_object_list(role("__player__")) if p is not None]
+    if not ps:
+        return 0
+    Agent.SHARED.set_inventory_value("vs_test_storm_done", True)
+    p = ps[0]
+    try:
+        f = p.engine_object.forward_vector()
+        fx, fz = f.x, f.z
+    except Exception:
+        fx, fz = 0.0, 1.0
+    L = math.hypot(fx, fz) or 1.0
+    _vs("venus_cloud_spawn")("venus_cloud_storm_cell", p.pos.x + fx / L * 2500, p.pos.y, p.pos.z + fz / L * 2500)
+    return 1
+
+
 def vs_test_start_y():
     """TEST HOOK (setting VS_START_Y): drop each crew to that altitude, once - from the
     loop, since the crew is re-placed after the map body runs (a body-time move ended up
