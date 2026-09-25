@@ -52,11 +52,25 @@ def vs_home_spawn(race):
     tag = fac.get("tag", "steam")
     home = to_id(npc_spawn(0, 0, 0, fac.get("name", race) + " Haven", race.lower() + ", station, vs_market",
                            "venus_" + tag + "_station_civil", "behav_station"))
-    other = "Commons" if race != "Commons" else "Concord"
+    # The second yard must NOT be hostile to the crew: its turrets fire on enemies and a
+    # market that shoots you cannot trade. Nobody is friendly to the Brood (or to the
+    # Syndicate's Commons), so pick a faction at peace with this one, else the crew's own.
+    other = vs_friendly_yard_race(race)
     ofac = _vs("venus_faction_info")(other) or {}
     npc_spawn(6000, 400, -3500, ofac.get("name", other) + " Yards", other.lower() + ", station, vs_market",
               "venus_" + ofac.get("tag", "solar") + "_station_industrial", "behav_station")
     return home
+
+
+def vs_friendly_yard_race(race):
+    """A faction at peace with `race` to run the second market (Commons first, the
+    traders), or `race` itself when every other faction is hostile."""
+    race = vs_race(race)
+    hostile = set(vs_enemy_races(race))
+    for r in ["Commons", "Flotilla", "Concord", "Directorate", "Syndicate", "Brood"]:
+        if r != race and r not in hostile:
+            return r
+    return race
 
 
 def vs_place_players(home_id):
@@ -393,6 +407,15 @@ def vs_autopilot_step(ship):
                 set_inventory_value(ship.id, "vs_ap_cloud", 0)
 
 
+def _vs_turret_sides(ship):
+    """'<matching>/<total>' turrets on this ship that share its side (a mismatch shoots it)."""
+    from sbs_utils.procedural.mount import mount_list
+    from sbs_utils.procedural.query import to_object
+    ts = [to_object(m) for m in (mount_list(ship) or [])]
+    ts = [t for t in ts if t is not None]
+    return "%d/%d" % (len([t for t in ts if t.side == ship.side]), len(ts))
+
+
 def vs_report():
     """One status line in vs_status.txt for engine runs (the engine hands back no stdout)."""
     from sbs_utils.procedural.execution import get_shared_variable
@@ -400,9 +423,14 @@ def vs_report():
     from sbs_utils.procedural.query import to_object_list
     from sbs_utils.fs import get_mission_dir_filename
     ps = [p for p in to_object_list(role("__player__")) if p is not None]
-    line = "credits %s/%s faction %s players %s" % (get_shared_variable("VS_CREDITS"), get_shared_variable("VS_TARGET"),
+    line = "credits %s/%s faction %s players %s turrets %s" % (get_shared_variable("VS_CREDITS"), get_shared_variable("VS_TARGET"),
                                                   get_shared_variable("VS_FACTION"),
-                                                  [(p.art_id, p.side, vs_cargo_text(p)) for p in ps])
+                                                  [(p.art_id, p.side, vs_cargo_text(p)) for p in ps],
+                                                  [_vs_turret_sides(p) for p in ps])
+    from sbs_utils.procedural.sides import side_are_enemies
+    sts = [st for st in to_object_list(role("station")) if st is not None]
+    line += " stations " + str([(st.name, st.side, "HOSTILE" if ps and side_are_enemies(st.side, ps[0].side) else "ok",
+                                 _vs_turret_sides(st)) for st in sts])
     try:
         with open(get_mission_dir_filename("vs_status.txt"), "w") as fh:
             fh.write(line + "\n")
