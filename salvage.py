@@ -427,6 +427,12 @@ def vs_report():
                                                   get_shared_variable("VS_FACTION"),
                                                   [(p.art_id, p.side, vs_cargo_text(p)) for p in ps],
                                                   [_vs_turret_sides(p) for p in ps])
+    from sbs_utils.procedural.query import get_data_set_value
+    line += " ship " + str([(round(get_data_set_value(p.id, "energy", default=0) or 0),
+                             round(getattr(p.engine_object, "cur_speed", 0) or 0, 2), get_data_set_value(p.id, "playerThrottle", default=None),
+                             get_data_set_value(p.id, "inside_nebula_count", default=0),
+                             get_data_set_value(p.id, "shields_raised_flag", default=None),
+                             round(p.pos.y)) for p in ps])
     from sbs_utils.procedural.sides import side_are_enemies
     sts = [st for st in to_object_list(role("station")) if st is not None]
     line += " stations " + str([(st.name, st.side, "HOSTILE" if ps and side_are_enemies(st.side, ps[0].side) else "ok",
