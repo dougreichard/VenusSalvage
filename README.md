@@ -33,7 +33,7 @@ v0.2.0). Pick one of the six factions, fly its cruiser, and keep your lift rings
 - **Raids** come in on a crew's flank, 5-7 km out, from factions hostile to yours. They
   grow every other wave, plus one ship per extra crew.
 - **Wind lanes** run out from the Haven and back. Fly with the wind for 1.6x speed.
-- **The VENUS console tab** shows lift and hold, and fires your faction's doctrine.
+- **The Airship app** on the ePADD shows lift and hold and fires your faction's doctrine; its tile badge shows lift and whether the doctrine is ready.
 
 ## Settings and test hooks
 
