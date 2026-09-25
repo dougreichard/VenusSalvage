@@ -1,0 +1,9 @@
+# Mod hulls reach the engine only when the consuming mission says so.
+EXTRA_SHIP_DATA: true
+PLAYER_COUNT: 1
+DIFFICULTY: 4
+GAME_TIME_LIMIT: 25
+# a profile may force the faction (normally the map's Faction dropdown picks it)
+# VS_FACTION_FORCE: Syndicate
+# test hook: start every hold with this much coolant (0 = off)
+VS_TEST_CARGO: 0

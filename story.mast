@@ -1,0 +1,92 @@
+# Salvage Above Venus - a salvage-and-survival mission for the Above the Venusian Clouds
+# mod (VenusClouds-Mod venus_fleets). Harvest resource clouds, strip wrecks, haul the
+# cargo home and sell it before time runs out - while raiders hunt you and every hit to
+# your lift rings drags you toward the crushing deck.
+import salvage.py
+
+default shared VS_FACTION = "Flotilla"
+default shared VS_CREDITS = 0
+default shared VS_TARGET = 1000
+
+
+@map/venus_salvage "Salvage Above Venus"
+metadata: ``` yaml
+Properties:
+  Main:
+    Player Ships: 'gui_int_slider("$text:int;low: 1.0;high:4.0;", var= "PLAYER_COUNT")'
+    Difficulty: 'gui_int_slider("$text:int;low: 1.0;high:11.0;", var= "DIFFICULTY")'
+    Faction: 'gui_drop_down("$text: {VS_FACTION};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_FACTION")'
+    Game Length: 'gui_input("desc: Minutes;", var="GAME_TIME_LIMIT")'
+Defaults:
+  VS_FACTION: Flotilla
+  GAME_TIME_LIMIT: 25
+Crew:
+  hull: venus_steam_cruiser
+  side: flotilla
+```
+    " Harvest the resource clouds, strip the wrecks and haul your salvage home before
+    " time runs out. Raiders hunt the lanes, storms tear at your rings, and a ship that
+    " loses its lift sinks into the deck.
+    # the dropdown picks the faction; a profile may force one (VS_FACTION_FORCE)
+    VS_FACTION = vs_race(vs_setting("VS_FACTION_FORCE", None) or VS_FACTION)
+    shared vs_home = vs_home_spawn(VS_FACTION)
+    await task_schedule(spawn_players)
+    vs_seat(VS_FACTION)
+    vs_place_players(vs_home)
+    for vs_p in to_object_list(role("__player__")):
+        docking_set_docking_logic(vs_p.id, role(vs_p.side) & role("station"), docking_dock_with_friendly_station)
+
+    vs_world = venus_world_spawn(0, 0, 32000, lanes=20, resources=16, storms=3, wrecks=5)
+    print("Salvage Above Venus: " + vs_world)
+
+    shared VS_CREDITS = 0
+    shared VS_TARGET = 600 + 150 * vs_int(DIFFICULTY, 4)
+    vs_minutes = vs_int(GAME_TIME_LIMIT, 25)
+    set_timer(SHARED, "vs_time", minutes=vs_minutes)
+    game_end_condition_add(destroyed_all(role("__player__")), "Every ship was lost to the deck.", False)
+    game_end_condition_add(destroyed_any(vs_home), "Home station destroyed.", False)
+
+    comms_broadcast(role("__player__"), "Haul " + str(VS_TARGET) + " credits of salvage home in " + str(vs_minutes) + " minutes. Ice, sulfur, ore, spores and aether sell at any market station; wrecks give salvage and a lift-ring refit.", "#fc8")
+    task_schedule(vs_raids)
+    vs_test_units = vs_int(vs_setting("VS_TEST_CARGO", 0), 0)
+    vs_test_cargo(vs_test_units) if vs_test_units > 0 else None
+
+--- vs_loop
+    await delay_sim(3)
+    for vs_p in to_object_list(role("__player__")):
+        vs_sold = vs_sell(vs_p)
+        if vs_sold > 0:
+            comms_broadcast(vs_p.id, "Sold for " + str(vs_sold) + " credits. Lift rings refitted. " + str(VS_CREDITS) + " of " + str(VS_TARGET) + ".", "#8f8")
+    vs_report()
+    if VS_CREDITS >= VS_TARGET:
+        START_TEXT = "The holds are full and the Haven is saved. " + str(VS_CREDITS) + " credits hauled."
+        GAME_STARTED = False
+        GAME_ENDED = True
+        music_play_sting("victory")
+        signal_emit("show_game_results", None)
+        ->END
+    if is_timer_finished(SHARED, "vs_time"):
+        START_TEXT = "Time is up. Only " + str(VS_CREDITS) + " of " + str(VS_TARGET) + " credits hauled."
+        GAME_STARTED = False
+        GAME_ENDED = True
+        music_play_sting("failure")
+        signal_emit("show_game_results", None)
+        ->END
+    jump vs_loop
+
+
+# Raiders: fleets of whichever factions are hostile to yours, bigger each wave.
+== vs_raids ==
+    vs_wave = 0
+---vs_raid_loop
+    await delay_sim(max(90, 240 - 15 * vs_int(DIFFICULTY, 4)))
+    ->END if GAME_ENDED
+    vs_enemies = vs_enemy_races(VS_FACTION)
+    ->END if len(vs_enemies) == 0
+    vs_wave += 1
+    vs_race_pick = random.choice(vs_enemies)
+    vs_pos = Vec3.rand_in_sphere(9000, 14000, False, True)
+    vs_size = min(10, vs_int(DIFFICULTY, 4) // 2 + vs_wave)
+    prefab_spawn("prefab_fleet_raider", {"race": vs_race_pick, "fleet_difficulty": vs_size, "faction_side": True, "START_X": vs_pos.x, "START_Y": 0, "START_Z": vs_pos.z})
+    comms_broadcast(role("__player__"), "Raiders on the lanes: " + vs_race_pick + " wave " + str(vs_wave) + ".", "#f84")
+    jump vs_raid_loop
