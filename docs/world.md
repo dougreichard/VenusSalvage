@@ -46,7 +46,8 @@ Get out before that happens:
 | Storm cell (dark, flickering lightning) | Cover, but it strikes your ship every few seconds and damages your systems |
 
 A resource cloud shrinks as it is harvested and disperses when it is empty. Below the
-lanes lies a layer of cloud, and below that the cloud sea itself.
+lanes lies a layer of cloud, and below that the cloud sea itself. Both hide you as a cloud
+does, but they sit low, near the deck, where lingering costs you.
 
 ## Wind lanes
 
