@@ -10,6 +10,7 @@ Properties:
     Faction: 'gui_drop_down("$text: {VS_FACTION};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_FACTION")'
     Enemy: 'gui_drop_down("$text: {VS_ENEMY};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_ENEMY")'
 Defaults:
+  MUSIC_SELECT: Venus_Clouds
   VS_FACTION: Syndicate
   VS_ENEMY: Brood
 Crew:
@@ -65,6 +66,7 @@ Properties:
     Difficulty: 'gui_int_slider("$text:int;low: 1.0;high:11.0;", var= "DIFFICULTY")'
     Faction: 'gui_drop_down("$text: {VS_FACTION};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_FACTION")'
 Defaults:
+  MUSIC_SELECT: Venus_Clouds
   VS_FACTION: Concord
 Crew:
   hull: venus_deco_cruiser
@@ -131,6 +133,7 @@ Properties:
     Faction: 'gui_drop_down("$text: {VS_FACTION};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_FACTION")'
     Game Length: 'gui_input("desc: Minutes;", var="GAME_TIME_LIMIT")'
 Defaults:
+  MUSIC_SELECT: Venus_Clouds
   VS_FACTION: Directorate
   GAME_TIME_LIMIT: 15
 Crew:

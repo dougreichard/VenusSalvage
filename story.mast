@@ -19,6 +19,7 @@ Properties:
     Faction: 'gui_drop_down("$text: {VS_FACTION};list: Flotilla, Concord, Directorate, Syndicate, Commons, Brood", var="VS_FACTION")'
     Game Length: 'gui_input("desc: Minutes;", var="GAME_TIME_LIMIT")'
 Defaults:
+  MUSIC_SELECT: Venus_Clouds
   VS_FACTION: Flotilla
   GAME_TIME_LIMIT: 25
 Crew:

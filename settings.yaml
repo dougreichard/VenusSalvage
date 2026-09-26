@@ -1,5 +1,7 @@
 # Mod hulls reach the engine only when the consuming mission says so.
 EXTRA_SHIP_DATA: true
+# Venus music only (VenusClouds-Mod's bank). Each map's Defaults: pins it again at runtime.
+MUSIC_SELECT: Venus_Clouds
 PLAYER_COUNT: 1
 DIFFICULTY: 4
 GAME_TIME_LIMIT: 25
